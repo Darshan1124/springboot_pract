@@ -1,6 +1,7 @@
 package com.example.journal.controller;
 
 
+import com.example.journal.dto.JournalEntryDTO;
 import com.example.journal.entity.JournalEntry;
 import com.example.journal.service.JournalEntryService;
 import lombok.RequiredArgsConstructor;
@@ -19,8 +20,8 @@ public class JournalEntryController {
     private final JournalEntryService journalEntryService;
 
     @GetMapping
-    public ResponseEntity<List<JournalEntry>> getAll() {
-        List<JournalEntry> all = journalEntryService.getAll();
+    public ResponseEntity<List<JournalEntryDTO>> getAll() {
+        List<JournalEntryDTO> all = journalEntryService.getAll();
         return new ResponseEntity<>(all, HttpStatus.OK);
     }
 

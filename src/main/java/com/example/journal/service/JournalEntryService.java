@@ -1,5 +1,6 @@
 package com.example.journal.service;
 
+import com.example.journal.dto.JournalEntryDTO;
 import com.example.journal.entity.JournalEntry;
 import com.example.journal.entity.User;
 import com.example.journal.repository.JournalEntryRepository;
@@ -9,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor // Lombok: Autowires 'final' dependencies automatically
@@ -19,13 +21,18 @@ public class JournalEntryService {
     private final UserService userService;
 
     @Transactional(readOnly = true)
-    public List<JournalEntry> getAll() {
-        return journalEntryRepository.findAll();
+    public List<JournalEntryDTO> getAll() {
+    	List<JournalEntry> entries = journalEntryRepository.findAll();
+    	List<JournalEntryDTO> cur = entries.stream()
+                .map(entry -> convertToDTO(entry)) // <-- Changed this line
+                .collect(Collectors.toList());
+    	return cur;
     }
 
     @Transactional(readOnly = true)
-    public Optional<JournalEntry> findById(Long id) {
-        return journalEntryRepository.findById(id);
+    public Optional<JournalEntryDTO> findById(Long id) {
+    	Optional<JournalEntry> optionalEntry= journalEntryRepository.findById(id);
+    	return optionalEntry.map(entry -> convertToDTO(entry));
     }
 
     @Transactional
@@ -75,6 +82,23 @@ public class JournalEntryService {
         
         // 3. Save the entry (The user will be updated automatically if cascaded, or save entry directly)
         return journalEntryRepository.save(journalEntry);
+    }
+    
+ // Add this inside JournalEntryService.java
+
+    public JournalEntryDTO convertToDTO(JournalEntry entry) {
+        JournalEntryDTO dto = new JournalEntryDTO();
+        dto.setId(entry.getId());
+        dto.setTitle(entry.getTitle());
+        dto.setContent(entry.getContent());
+        dto.setDate(entry.getDate());
+        
+        // Check if the user exists to prevent NullPointerExceptions
+        if (entry.getUser() != null) {
+            dto.setUsername(entry.getUser().getUsername());
+        }
+        
+        return dto;
     }
 }
 
