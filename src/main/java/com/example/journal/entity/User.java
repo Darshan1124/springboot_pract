@@ -1,14 +1,19 @@
 package com.example.journal.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Table(name = "users")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 public class User {
 
@@ -19,10 +24,8 @@ public class User {
     @Column(nullable = false, unique = true)
     private String username;
 
-    /* * CascadeType.ALL ensures that if you save/delete a User, 
-     * all associated JournalEntries are automatically saved/deleted.
-     * orphanRemoval = true deletes a JournalEntry if it's removed from this list.
-     */
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private List<JournalEntry> journalEntries = new ArrayList<>();
 }

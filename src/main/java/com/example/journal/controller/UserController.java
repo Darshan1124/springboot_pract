@@ -1,6 +1,6 @@
 package com.example.journal.controller;
 
-import com.example.journal.entity.User;
+import com.example.journal.dto.UserDTO;
 import com.example.journal.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,43 +15,41 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
-    
+
     @GetMapping("/health")
-    public ResponseEntity<?> health(){
-    	return new ResponseEntity<>(HttpStatus.OK);
+    public ResponseEntity<String> health() {
+        return ResponseEntity.ok("OK");
     }
 
-    @GetMapping("/getallusers")
-    public ResponseEntity<List<User>> getAllUsers() {
-        List<User> users = userService.getAllUsers();
-        return new ResponseEntity<>(users, HttpStatus.OK);
+    @GetMapping
+    public ResponseEntity<List<UserDTO>> getAllUsers() {
+        return ResponseEntity.ok(userService.getAllUsers());
     }
 
-    @PostMapping("createuser")
-    public ResponseEntity<User> createUser(@RequestBody User user) {
-        try {
-            User savedUser = userService.saveNewUser(user);
-            return new ResponseEntity<>(savedUser, HttpStatus.CREATED);
-        } catch (Exception e) {
-            // Catches exceptions like duplicate usernames (due to unique=true in entity)
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-        }
+    @GetMapping("/{id}")
+    public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.getUserById(id));
+    }
+
+    @GetMapping("/username/{username}")
+    public ResponseEntity<UserDTO> getUserByUsername(@PathVariable String username) {
+        return ResponseEntity.ok(userService.getUserByUsername(username));
+    }
+
+    @PostMapping
+    public ResponseEntity<UserDTO> createUser(@RequestBody UserDTO userDTO) {
+        UserDTO savedUser = userService.createUser(userDTO);
+        return new ResponseEntity<>(savedUser, HttpStatus.CREATED);
     }
 
     @PutMapping("/{username}")
-    public ResponseEntity<User> updateUser(@PathVariable String username, @RequestBody User user) {
-        User updatedUser = userService.updateUser(username, user);
-        if (updatedUser != null) {
-            return new ResponseEntity<>(updatedUser, HttpStatus.OK);
-        }
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    public ResponseEntity<UserDTO> updateUser(@PathVariable String username, @RequestBody UserDTO userDTO) {
+        return ResponseEntity.ok(userService.updateUser(username, userDTO));
     }
 
-    @DeleteMapping("/id/{myId}")
-    public ResponseEntity<?> deleteUserById(@PathVariable Long myId) {
-        // Because of CascadeType.ALL, deleting the user will also automatically 
-        // delete all journal_entries associated with this user in the MySQL database!
-        userService.deleteById(myId);
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT); 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUserById(@PathVariable Long id) {
+        userService.deleteUserById(id);
+        return ResponseEntity.noContent().build();
     }
 }

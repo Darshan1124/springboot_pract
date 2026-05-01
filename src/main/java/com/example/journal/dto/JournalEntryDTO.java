@@ -1,7 +1,7 @@
 package com.example.journal.dto;
 
-
 import lombok.Data;
+
 import java.time.LocalDateTime;
 
 @Data
@@ -10,5 +10,5 @@ public class JournalEntryDTO {
     private String title;
     private String content;
     private LocalDateTime date;
-    private String username; // Just the username, not the whole User object!
+    private String username;
 }
