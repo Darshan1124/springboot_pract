@@ -1,80 +1,90 @@
 package com.example.journal.service;
 
+import com.example.journal.dto.JournalEntryDTO;
 import com.example.journal.entity.JournalEntry;
 import com.example.journal.entity.User;
+import com.example.journal.mapper.JournalEntryMapper;
 import com.example.journal.repository.JournalEntryRepository;
+import com.example.journal.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor // Lombok: Autowires 'final' dependencies automatically
+@RequiredArgsConstructor
 public class JournalEntryService {
 
     private final JournalEntryRepository journalEntryRepository;
-    
-    private final UserService userService;
+    private final UserRepository userRepository;
+    private final JournalEntryMapper journalEntryMapper;
 
     @Transactional(readOnly = true)
-    public List<JournalEntry> getAll() {
-        return journalEntryRepository.findAll();
+    public List<JournalEntryDTO> getAll() {
+        return journalEntryRepository.findAll()
+                .stream()
+                .map(journalEntryMapper::toDTO)
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public Optional<JournalEntry> findById(Long id) {
-        return journalEntryRepository.findById(id);
+    public JournalEntryDTO findById(Long id) {
+        return journalEntryRepository.findById(id)
+                .map(journalEntryMapper::toDTO)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Journal entry not found"));
     }
 
     @Transactional
-    public void deleteById(Long id, String username) {
-        // 1. Find the user making the request
-        User user = userService.findByUsername(username).orElseThrow();
-
-        // 2. Remove the specific entry from this user's list
-        // Because orphanRemoval = true, Hibernate will automatically delete it from MySQL!
-        boolean removed = user.getJournalEntries().removeIf(entry -> entry.getId().equals(id));
-        
-        // (Optional) You can add logic here to throw an exception if 'removed' is false, 
-        // meaning the entry didn't belong to them or didn't exist.
-    }
-
-    @Transactional // Unlocks Hibernate Dirty Checking
-    public JournalEntry updateEntry(Long id, JournalEntry newEntry) {
-        JournalEntry oldEntry = journalEntryRepository.findById(id).orElse(null);
-        
-        if (oldEntry != null) {
-            // Null and empty checks to prevent overwriting valid data
-            if (newEntry.getTitle() != null && !newEntry.getTitle().trim().isEmpty()) {
-                oldEntry.setTitle(newEntry.getTitle());
-            }
-            if (newEntry.getContent() != null && !newEntry.getContent().trim().isEmpty()) {
-                oldEntry.setContent(newEntry.getContent());
-            }
-            
-            // Notice: No explicit journalEntryRepository.save(oldEntry) is called here.
-            // Because the method is @Transactional, modifying the 'oldEntry' automatically
-            // triggers a database UPDATE when the transaction commits.
-            return oldEntry;
+    public JournalEntryDTO saveEntry(JournalEntryDTO dto, String username) {
+        if (dto == null || dto.getTitle() == null || dto.getTitle().trim().isEmpty()
+                || dto.getContent() == null || dto.getContent().trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Title and content are required");
         }
-        return null;
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        JournalEntry entry = journalEntryMapper.toEntity(dto);
+        entry.setUser(user);
+
+        user.getJournalEntries().add(entry);
+
+        JournalEntry saved = journalEntryRepository.save(entry);
+        return journalEntryMapper.toDTO(saved);
     }
-    
- // Inside JournalEntryService.java
 
     @Transactional
-    public JournalEntry saveEntry(JournalEntry journalEntry, String username) {
-        // 1. Find the user
-        User user = userService.findByUsername(username).orElseThrow();
-        
-        // 2. Set the relationship on both sides
-        journalEntry.setUser(user);
-        user.getJournalEntries().add(journalEntry);
-        
-        // 3. Save the entry (The user will be updated automatically if cascaded, or save entry directly)
-        return journalEntryRepository.save(journalEntry);
+    public JournalEntryDTO updateEntry(Long id, JournalEntryDTO newEntry) {
+        JournalEntry oldEntry = journalEntryRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Journal entry not found"));
+
+        if (newEntry.getTitle() != null && !newEntry.getTitle().trim().isEmpty()) {
+            oldEntry.setTitle(newEntry.getTitle().trim());
+        }
+
+        if (newEntry.getContent() != null && !newEntry.getContent().trim().isEmpty()) {
+            oldEntry.setContent(newEntry.getContent().trim());
+        }
+
+        return journalEntryMapper.toDTO(oldEntry);
+    }
+
+    @Transactional
+    public void deleteEntry(Long entryId, String username) {
+        JournalEntry entry = journalEntryRepository.findById(entryId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Journal entry not found"));
+
+        if (entry.getUser() == null || !entry.getUser().getUsername().equals(username)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This journal entry does not belong to the user");
+        }
+
+        User user = entry.getUser();
+        user.getJournalEntries().remove(entry);
+
+        journalEntryRepository.delete(entry);
     }
 }
-

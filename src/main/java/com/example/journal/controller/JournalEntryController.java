@@ -1,7 +1,6 @@
 package com.example.journal.controller;
 
-
-import com.example.journal.entity.JournalEntry;
+import com.example.journal.dto.JournalEntryDTO;
 import com.example.journal.service.JournalEntryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -9,7 +8,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/journal")
@@ -19,40 +17,32 @@ public class JournalEntryController {
     private final JournalEntryService journalEntryService;
 
     @GetMapping
-    public ResponseEntity<List<JournalEntry>> getAll() {
-        List<JournalEntry> all = journalEntryService.getAll();
-        return new ResponseEntity<>(all, HttpStatus.OK);
+    public ResponseEntity<List<JournalEntryDTO>> getAll() {
+        return ResponseEntity.ok(journalEntryService.getAll());
     }
 
-    @PostMapping
-    public ResponseEntity<JournalEntry> createEntry(@RequestBody JournalEntry myEntry) {
-        try {
-            JournalEntry savedEntry = journalEntryService.saveEntry(myEntry);
-            return new ResponseEntity<>(savedEntry, HttpStatus.CREATED);
-        } catch (Exception e) {
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-        }
+    @GetMapping("/{id}")
+    public ResponseEntity<JournalEntryDTO> getJournalEntryById(@PathVariable Long id) {
+        return ResponseEntity.ok(journalEntryService.findById(id));
     }
 
-    @GetMapping("/id/{myId}")
-    public ResponseEntity<JournalEntry> getJournalEntryById(@PathVariable Long myId) {
-        Optional<JournalEntry> journalEntry = journalEntryService.findById(myId);
-        return journalEntry.map(entry -> new ResponseEntity<>(entry, HttpStatus.OK))
-                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    @PostMapping("/{username}")
+    public ResponseEntity<JournalEntryDTO> createEntry(@PathVariable String username,
+                                                       @RequestBody JournalEntryDTO dto) {
+        JournalEntryDTO savedEntry = journalEntryService.saveEntry(dto, username);
+        return new ResponseEntity<>(savedEntry, HttpStatus.CREATED);
     }
 
-    @DeleteMapping("/id/{myId}")
-    public ResponseEntity<?> deleteJournalEntryById(@PathVariable Long myId) {
-        journalEntryService.deleteById(myId);
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT); // Standard HTTP 204 for successful deletions
+    @PutMapping("/{id}")
+    public ResponseEntity<JournalEntryDTO> updateJournalById(@PathVariable Long id,
+                                                             @RequestBody JournalEntryDTO newEntry) {
+        return ResponseEntity.ok(journalEntryService.updateEntry(id, newEntry));
     }
 
-    @PutMapping("/id/{myId}")
-    public ResponseEntity<JournalEntry> updateJournalById(@PathVariable Long myId, @RequestBody JournalEntry newEntry) {
-        JournalEntry updatedEntry = journalEntryService.updateEntry(myId, newEntry);
-        if (updatedEntry != null) {
-            return new ResponseEntity<>(updatedEntry, HttpStatus.OK);
-        }
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    @DeleteMapping("/{id}/{username}")
+    public ResponseEntity<Void> deleteJournalEntryById(@PathVariable Long id,
+                                                       @PathVariable String username) {
+        journalEntryService.deleteEntry(id, username);
+        return ResponseEntity.noContent().build();
     }
 }
