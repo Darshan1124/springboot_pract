@@ -14,7 +14,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.stream.Collectors;
-
 @Service
 @RequiredArgsConstructor
 public class JournalEntryService {
@@ -24,67 +23,65 @@ public class JournalEntryService {
     private final JournalEntryMapper journalEntryMapper;
 
     @Transactional(readOnly = true)
-    public List<JournalEntryDTO> getAll() {
-        return journalEntryRepository.findAll()
+    public List<JournalEntryDTO> getMyEntries(String username) {
+        return journalEntryRepository.findByUser_Username(username)
                 .stream()
                 .map(journalEntryMapper::toDTO)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Transactional(readOnly = true)
-    public JournalEntryDTO findById(Long id) {
-        return journalEntryRepository.findById(id)
+    public List<JournalEntryDTO> getAllEntries() {
+        return journalEntryRepository.findAll()
+                .stream()
                 .map(journalEntryMapper::toDTO)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Journal entry not found"));
+                .toList();
     }
 
     @Transactional
-    public JournalEntryDTO saveEntry(JournalEntryDTO dto, String username) {
-        if (dto == null || dto.getTitle() == null || dto.getTitle().trim().isEmpty()
-                || dto.getContent() == null || dto.getContent().trim().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Title and content are required");
-        }
-
+    public JournalEntryDTO createForCurrentUser(JournalEntryDTO dto, String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         JournalEntry entry = journalEntryMapper.toEntity(dto);
         entry.setUser(user);
-
         user.getJournalEntries().add(entry);
 
-        JournalEntry saved = journalEntryRepository.save(entry);
-        return journalEntryMapper.toDTO(saved);
+        return journalEntryMapper.toDTO(journalEntryRepository.save(entry));
     }
 
     @Transactional
-    public JournalEntryDTO updateEntry(Long id, JournalEntryDTO newEntry) {
-        JournalEntry oldEntry = journalEntryRepository.findById(id)
+    public JournalEntryDTO updateOwnEntry(Long id, JournalEntryDTO dto, String username) {
+        JournalEntry entry = journalEntryRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Journal entry not found"));
 
-        if (newEntry.getTitle() != null && !newEntry.getTitle().trim().isEmpty()) {
-            oldEntry.setTitle(newEntry.getTitle().trim());
+        assertOwner(entry, username);
+
+        if (dto.getTitle() != null && !dto.getTitle().trim().isEmpty()) {
+            entry.setTitle(dto.getTitle().trim());
+        }
+        if (dto.getContent() != null && !dto.getContent().trim().isEmpty()) {
+            entry.setContent(dto.getContent().trim());
         }
 
-        if (newEntry.getContent() != null && !newEntry.getContent().trim().isEmpty()) {
-            oldEntry.setContent(newEntry.getContent().trim());
-        }
-
-        return journalEntryMapper.toDTO(oldEntry);
+        return journalEntryMapper.toDTO(entry);
     }
 
     @Transactional
-    public void deleteEntry(Long entryId, String username) {
-        JournalEntry entry = journalEntryRepository.findById(entryId)
+    public void deleteOwnEntry(Long id, String username) {
+        JournalEntry entry = journalEntryRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Journal entry not found"));
 
-        if (entry.getUser() == null || !entry.getUser().getUsername().equals(username)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This journal entry does not belong to the user");
-        }
+        assertOwner(entry, username);
 
-        User user = entry.getUser();
-        user.getJournalEntries().remove(entry);
-
+        User owner = entry.getUser();
+        owner.getJournalEntries().remove(entry);
         journalEntryRepository.delete(entry);
+    }
+
+    private void assertOwner(JournalEntry entry, String username) {
+        if (entry.getUser() == null || !entry.getUser().getUsername().equals(username)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only access your own journal entries");
+        }
     }
 }

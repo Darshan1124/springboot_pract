@@ -26,6 +26,7 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -110,6 +111,7 @@ public class AuthService {
                 .expiresAt(now.plus(accessTokenMinutes, ChronoUnit.MINUTES))
                 .id(UUID.randomUUID().toString())
                 .claim("userId", user.getId())
+                .claim("authorities", List.of(user.getRole().name()))
                 .build();
 
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();

@@ -1,6 +1,7 @@
 package com.example.journal.service;
 
 import com.example.journal.dto.UserDTO;
+import com.example.journal.entity.Role;
 import com.example.journal.entity.User;
 import com.example.journal.mapper.UserMapper;
 import com.example.journal.repository.RefreshTokenRepository;
@@ -42,6 +43,7 @@ public class UserService {
         User user = userMapper.toEntity(dto);
         user.setUsername(username);
         user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        user.setRole(Role.ROLE_USER);
 
         User saved = userRepository.save(user);
         return userMapper.toDTO(saved);
