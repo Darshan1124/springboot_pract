@@ -9,7 +9,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.List;
 
-public class UserPrincipal implements UserDetails, CredentialsContainer {
+public class UserPrincipal implements UserDetails {
 
     private final User user;
 
@@ -19,7 +19,7 @@ public class UserPrincipal implements UserDetails, CredentialsContainer {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
+        return List.of(new SimpleGrantedAuthority(user.getRole().name()));
     }
 
     @Override
@@ -52,10 +52,6 @@ public class UserPrincipal implements UserDetails, CredentialsContainer {
         return true;
     }
 
-    @Override
-    public void eraseCredentials() {
-        user.setPassword(null);
-    }
 
     public User getUser() {
         return user;

@@ -5,10 +5,11 @@ import com.example.journal.service.JournalEntryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-
 @RestController
 @RequestMapping("/journal")
 @RequiredArgsConstructor
@@ -16,33 +17,38 @@ public class JournalEntryController {
 
     private final JournalEntryService journalEntryService;
 
-    @GetMapping
-    public ResponseEntity<List<JournalEntryDTO>> getAll() {
-        return ResponseEntity.ok(journalEntryService.getAll());
+    @GetMapping("/me")
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
+    public ResponseEntity<List<JournalEntryDTO>> getMyEntries(Authentication authentication) {
+        return ResponseEntity.ok(journalEntryService.getMyEntries(authentication.getName()));
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<JournalEntryDTO> getJournalEntryById(@PathVariable Long id) {
-        return ResponseEntity.ok(journalEntryService.findById(id));
+    @GetMapping("/all")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<JournalEntryDTO>> getAllEntries() {
+        return ResponseEntity.ok(journalEntryService.getAllEntries());
     }
 
-    @PostMapping("/{username}")
-    public ResponseEntity<JournalEntryDTO> createEntry(@PathVariable String username,
+    @PostMapping
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
+    public ResponseEntity<JournalEntryDTO> createEntry(Authentication authentication,
                                                        @RequestBody JournalEntryDTO dto) {
-        JournalEntryDTO savedEntry = journalEntryService.saveEntry(dto, username);
-        return new ResponseEntity<>(savedEntry, HttpStatus.CREATED);
+        JournalEntryDTO saved = journalEntryService.createForCurrentUser(dto, authentication.getName());
+        return new ResponseEntity<>(saved, HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<JournalEntryDTO> updateJournalById(@PathVariable Long id,
-                                                             @RequestBody JournalEntryDTO newEntry) {
-        return ResponseEntity.ok(journalEntryService.updateEntry(id, newEntry));
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
+    public ResponseEntity<JournalEntryDTO> updateEntry(Authentication authentication,
+                                                       @PathVariable Long id,
+                                                       @RequestBody JournalEntryDTO dto) {
+        return ResponseEntity.ok(journalEntryService.updateOwnEntry(id, dto, authentication.getName()));
     }
 
-    @DeleteMapping("/{id}/{username}")
-    public ResponseEntity<Void> deleteJournalEntryById(@PathVariable Long id,
-                                                       @PathVariable String username) {
-        journalEntryService.deleteEntry(id, username);
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
+    public ResponseEntity<Void> deleteEntry(Authentication authentication, @PathVariable Long id) {
+        journalEntryService.deleteOwnEntry(id, authentication.getName());
         return ResponseEntity.noContent().build();
     }
 }
