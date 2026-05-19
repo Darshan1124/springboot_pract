@@ -7,6 +7,7 @@ import com.example.journal.mapper.UserMapper;
 import com.example.journal.repository.RefreshTokenRepository;
 import com.example.journal.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -64,7 +65,27 @@ public class UserService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
+
+
+//    How it works
+//
+//    Think of Redis like a big hashmap.
+//
+//    Spring is doing this behind the scenes:
+//
+//    cache name = users
+//    key = darshan
+//            value = UserDTO object
+//
+//    So when you call:
+//
+//    getUserByUsername("darshan")
+//
+//    Spring first checks:
+//
+//    users["darshan"]
     @Transactional(readOnly = true)
+    @Cacheable(value = "users",key = "#username")
     public UserDTO getUserByUsername(String username) {
         return userRepository.findByUsername(username)
                 .map(userMapper::toDTO)
