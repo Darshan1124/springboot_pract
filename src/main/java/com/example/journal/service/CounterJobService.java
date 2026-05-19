@@ -18,5 +18,4 @@ public class CounterJobService {
     public int getCounter() {
         return counter.get();
     }
-
 }
