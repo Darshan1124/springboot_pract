@@ -9,13 +9,16 @@ import org.springframework.web.client.RestClient;
 @Service
 public class ExternalApiService {
 
-    @Value("S{external.api.base-url}")
-    private String baseUrl;
-    @Value("S{external.api.API_KEY}")
-    private String api_key;
+    
     private final RestClient restClient;
-    public ExternalApiService() {
-        this.restClient = RestClient.builder().baseUrl(baseUrl).defaultHeader("x-api-key",api_key).build();
+    public ExternalApiService(
+            @Value("${external.api.base-url}") String baseUrl,
+            @Value("${external.api.key}") String apiKey
+    ) {
+        this.restClient = RestClient.builder()
+                .baseUrl(baseUrl)
+                .defaultHeader("x-api-key", apiKey)
+                .build();
     }
 
     public String externalReqGet(){
